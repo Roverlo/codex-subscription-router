@@ -44,8 +44,8 @@ function Get-OfficialApp {
     if ($package.Version.ToString() -ne $SupportedPackageVersion) {
         throw "Unsupported official Codex package $($package.Version); expected $SupportedPackageVersion. Refusing an unverified copy."
     }
-    $asarHash = (Get-FileHash -LiteralPath $asar -Algorithm SHA256).Hash
-    $codexHash = (Get-FileHash -LiteralPath $codex -Algorithm SHA256).Hash
+    $asarHash = (Microsoft.PowerShell.Utility\Get-FileHash -LiteralPath $asar -Algorithm SHA256).Hash
+    $codexHash = (Microsoft.PowerShell.Utility\Get-FileHash -LiteralPath $codex -Algorithm SHA256).Hash
     if ($asarHash -ne $SupportedAsarSha256 -or $codexHash -ne $SupportedCodexSha256) {
         throw 'Official Codex files do not match the reviewed Windows build. Refusing an unverified copy.'
     }
@@ -234,7 +234,7 @@ try {
     } finally {
         [Environment]::SetEnvironmentVariable('CODEX_MUX_PATCH_TOKEN', $savedPatchToken, 'Process')
     }
-    $patchedAsarHash = (Get-FileHash -LiteralPath (Join-Path $stage 'app\resources\app.asar') -Algorithm SHA256).Hash
+    $patchedAsarHash = (Microsoft.PowerShell.Utility\Get-FileHash -LiteralPath (Join-Path $stage 'app\resources\app.asar') -Algorithm SHA256).Hash
     [ordered]@{
         routerVersion = (Get-Content -LiteralPath (Join-Path $ProjectRoot 'VERSION') -Raw).Trim()
         installedAt = (Get-Date).ToUniversalTime().ToString('o')
