@@ -2,13 +2,22 @@
 
 ## Development setup
 
-Use macOS on Apple silicon with Go 1.26+, Node.js 22.12+, npm, Xcode Command Line
-Tools, and an official ChatGPT installation.
+Backend development requires Go 1.26+. macOS patch work additionally requires
+Apple silicon, Node.js 22.12+, npm, Xcode Command Line Tools, and an official
+ChatGPT installation. Windows installer work requires Windows x64 and the
+official Microsoft Store app.
 
 ```sh
 npm ci --ignore-scripts
 npm run check
 npm run release:check
+```
+
+On Windows, also run:
+
+```powershell
+.\install.ps1 -CheckOnly
+go test ./...
 ```
 
 Do not commit an app bundle, credentials, signing certificates, provisioning
@@ -28,8 +37,8 @@ must:
    user-visible state when appropriate.
 
 Test against the upstream build recorded in `docs/COMPATIBILITY.md`. If a new
-official build requires anchor changes, update that file in the same pull
-request.
+official build requires anchor or Windows hash changes, update that file in the
+same pull request.
 
 ## Pull requests
 

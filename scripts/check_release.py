@@ -21,6 +21,7 @@ REQUIRED_FILES = (
     "README.md",
     "SECURITY.md",
     "VERSION",
+    "install.ps1",
     "install.sh",
     "docs/ARCHITECTURE.md",
     "docs/COMPATIBILITY.md",
@@ -30,6 +31,8 @@ REQUIRED_FILES = (
     "docs/SMOKE-TEST.md",
     "package-lock.json",
     "package.json",
+    "windows/Manage-CodexSubscriptions.ps1",
+    "windows/Start-CodexSubscriptionRouter.ps1",
 )
 CURATED_SCREENSHOTS = (
     "screenshots/account-menu.png",
@@ -53,7 +56,7 @@ FORBIDDEN_TRACKED_SUFFIXES = {
     ".zip",
 }
 FORBIDDEN_TRACKED_NAMES = {".env", "auth.json", "control-token", "state.json"}
-TEXT_SUFFIXES = {"", ".c", ".go", ".json", ".js", ".cjs", ".md", ".py", ".toml", ".yml", ".yaml"}
+TEXT_SUFFIXES = {"", ".c", ".cjs", ".go", ".html", ".js", ".json", ".md", ".ps1", ".py", ".toml", ".yaml", ".yml"}
 MACOS_USER_PREFIX = "/" + "Users" + "/"
 
 
@@ -86,7 +89,10 @@ def main() -> int:
         fail("package-lock.json does not match the declared @electron/asar version")
     if package.get("license") != "MIT":
         fail("package.json license does not match LICENSE")
-    if not ((ROOT / "install.sh").stat().st_mode & 0o111):
+    install_mode = subprocess.check_output(
+        ["git", "ls-files", "--stage", "--", "install.sh"], cwd=ROOT
+    ).split(maxsplit=1)[0]
+    if install_mode != b"100755":
         fail("install.sh is not executable")
 
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")

@@ -1,15 +1,17 @@
 # Architecture
 
-The independently built desktop uses bundle identifier `app.cdxmux.multi`; its
-Computer Use helper uses `com.cdxmux.sky.CUAService`. Neither identifier is used
-by the official ChatGPT installation. These identifiers and the `.codex-mux`
-state directory remain stable across the product rename so existing macOS
-privacy grants, connected accounts, and sticky thread ownership continue to
-work.
+On macOS, the independently built desktop uses bundle identifier
+`app.cdxmux.multi`; its Computer Use helper uses
+`com.cdxmux.sky.CUAService`. Neither identifier is used by the official ChatGPT
+installation. These identifiers and the `.codex-mux` state directory remain
+stable across the product rename so existing privacy grants, connected
+accounts, and sticky thread ownership continue to work.
 
-Codex Subscription Router replaces the copied app's bundled `codex` executable
-with a small Go multiplexer and keeps the original binary beside it as
-`codex.real`.
+On macOS, Codex Subscription Router replaces the copied app's bundled `codex`
+executable with a small Go multiplexer and keeps the original binary beside it
+as `codex.real`. On Windows, the copied official app remains byte-for-byte
+unchanged: `CODEX_CLI_PATH` selects the separately built mux and
+`CODEX_MUX_REAL_CODEX` points back to the copied official `codex.exe`.
 
 ## Request routing
 
@@ -39,13 +41,19 @@ Each isolated account forces file-backed CLI and MCP OAuth credentials.
 
 ## Desktop integration
 
-The patcher extracts `app.asar`, verifies exact upstream anchors, inserts the
-account UI, disables self-update, and repacks the archive with an updated
+The macOS patcher extracts `app.asar`, verifies exact upstream anchors, inserts
+the account UI, disables self-update, and repacks the archive with an updated
 integrity hash. The app receives a separate Chromium profile and URL scheme.
 
 The copied Computer Use service, Node runtime, and callers are re-signed under
 one Apple team. The helper uses a separate bundle identity and socket, avoiding
 the official app's privacy grants and app-group container.
+
+The Windows installer verifies the Store package, hashes, and OpenAI signatures
+before copying the official app. It uses supported process-level CLI and user
+data overrides, preserves the signed Computer Use runtime, and exposes account
+management from the mux itself. The Store installation and persistent user
+environment remain unchanged.
 
 ## Plugin behavior
 
@@ -56,8 +64,9 @@ before forwarding the strict RPC request to the chosen child.
 
 ## Control API
 
-The renderer talks to a loopback-only HTTP service on port 48123. All private
-routes require a random 256-bit token. CORS is limited to the copied app's
-`app://-` origin. The service exposes account metadata, aggregated usage and
-profile data, thread ownership, login/logout actions, and an authenticated SSE
-event stream; it never returns OAuth tokens.
+The macOS renderer and Windows manager talk to a loopback-only HTTP service on
+port 48123. All private routes require a random 256-bit token. Cross-origin
+access is limited to the copied app's `app://-` origin; the manager is served
+from the loopback origin itself. The service exposes account metadata,
+aggregated usage and profile data, thread ownership, login/logout actions, and
+an authenticated SSE event stream; it never returns OAuth tokens.

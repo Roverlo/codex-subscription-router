@@ -3,6 +3,7 @@ package control
 import (
 	"context"
 	"crypto/subtle"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +14,9 @@ import (
 
 	"github.com/b-nnett/codex-subscription-router/internal/mux"
 )
+
+//go:embed manage.html
+var manageHTML []byte
 
 type Server struct {
 	token   string
@@ -34,6 +38,7 @@ func New(address, token string, multiplexer *mux.Multiplexer, uiTests bool) *Ser
 		router.HandleFunc("/v1/test/rate-limits", server.rateLimitPreview)
 		router.HandleFunc("/v1/test/rate-limit-resets", server.resetCreditsPreview)
 	}
+	router.HandleFunc("/", server.manage)
 	server.http = &http.Server{
 		Addr:              address,
 		Handler:           server.securityHeaders(router),
@@ -42,6 +47,22 @@ func New(address, token string, multiplexer *mux.Multiplexer, uiTests bool) *Ser
 		MaxHeaderBytes:    16 * 1024,
 	}
 	return server
+}
+
+func (s *Server) manage(response http.ResponseWriter, request *http.Request) {
+	if request.URL.Path != "/" {
+		http.NotFound(response, request)
+		return
+	}
+	if request.Method != http.MethodGet && request.Method != http.MethodHead {
+		methodNotAllowed(response)
+		return
+	}
+	response.Header().Set("Content-Security-Policy", "default-src 'none'; connect-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+	response.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if request.Method == http.MethodGet {
+		_, _ = response.Write(manageHTML)
+	}
 }
 
 func (s *Server) combinedProfile(response http.ResponseWriter, request *http.Request) {

@@ -7,6 +7,9 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Windows x64 installation using the official desktop CLI/profile overrides,
+  fail-closed Store build verification, recoverable updates, and local account
+  management without ASAR modification.
 - One-command installer with safe source updates, prerequisite checks, signed
   rebuilds, recoverable upgrades, and automatic launch.
 - Reset-aware routing that prioritizes weekly quota at risk of expiring and
