@@ -57,8 +57,8 @@ the release draft before publishing it.
 - Open the profile menu, verify prefetched pooled usage and subscription rows
   appear without a multi-second blank state, then click the profile trigger
   again and confirm the menu closes. Complete **Add another subscription**
-  through the directly opened device-code sign-in; confirm no intermediate
-  **Continue sign-in** row appears.
+  through ChatGPT OAuth in the system default browser; confirm no device code,
+  in-app browser, or intermediate **Continue sign-in** row appears.
 - With a disposable renderer-debug launch, run `scripts/check_windows_ui.mjs`
   and retain its screenshot plus the zero-console-error result.
 - Confirm there is no **Manage Codex Subscriptions** shortcut or browser manager

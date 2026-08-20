@@ -8,9 +8,10 @@ const source = await readFile(new URL("../ui/account-menu.js", import.meta.url),
 assert(!source.includes("Continue sign-in"));
 assert(!source.includes("CodexMuxMaskedEmail"));
 assert(!source.includes("CodexMuxProfileMenuOpenChange"));
+assert(!source.includes("chatgptDeviceCode"));
+assert(source.includes('body: JSON.stringify({ mode: "chatgpt" })'));
 
 const opened = [];
-const copied = [];
 let accountRequests = 0;
 const context = {
   URL,
@@ -21,7 +22,6 @@ const context = {
       json: async () => ({ accounts: [{ id: "primary", connected: true }] }),
     };
   },
-  navigator: { clipboard: { writeText: async (value) => copied.push(value) } },
   window: { open: (...args) => opened.push(args) },
 };
 vm.runInNewContext(
@@ -34,22 +34,17 @@ assert.equal(accountRequests, 1);
 assert.equal(accounts[0][0].id, "primary");
 
 const login = {
-  userCode: "ABCD-EFGH",
-  verificationUrl: "https://auth.openai.com/codex/device",
+  type: "chatgpt",
+  authUrl: "https://auth.openai.com/oauth/authorize?client_id=test",
 };
-assert.equal(await context.openLogin(login), "");
-assert.deepEqual(copied, [login.userCode]);
+assert.equal(await context.openLogin(login), undefined);
 assert.deepEqual(opened, [
-  [login.verificationUrl, "_blank", "noopener,noreferrer"],
+  [login.authUrl, "_blank", "noopener,noreferrer"],
 ]);
 
-context.navigator.clipboard.writeText = async () => {
-  throw new Error("clipboard unavailable");
-};
-assert.equal(await context.openLogin(login), login.userCode);
 await assert.rejects(
-  context.openLogin({ verificationUrl: "https://example.com/device" }),
+  context.openLogin({ authUrl: "https://example.com/oauth" }),
   /not trusted/,
 );
 
-console.log("Account menu direct-login checks passed.");
+console.log("Account menu browser-login checks passed.");

@@ -47,6 +47,12 @@ async function windowsAccountMenu(token) {
     )
     .replaceAll("bg-token-charts-purple/10", "bg-chart-purple/10")
     .replaceAll("text-token-charts-purple", "text-chart-purple");
+  component = replaceOnce(
+    component,
+    '  window.open(destination.href, "_blank", "noopener,noreferrer");',
+    '  eD({ href: destination.href, initiator: "open_in_browser_bridge", useExternalBrowser: true });',
+    "Windows default-browser sign-in",
+  );
   for (const [from, to] of [
     ["e7", "d7"],
     ["kXc", "QFl"],
@@ -89,6 +95,7 @@ async function patchRenderer(extracted, token) {
     "QFl=r(s(),1)",
     "d7=J()",
     "function lI(",
+    "function eD(",
     "hI={",
     "z2=e=>",
   ]) {

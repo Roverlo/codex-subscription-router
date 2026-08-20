@@ -12,8 +12,8 @@
   placement from the source structure. Existing Codex menu items stay below it.
 - Interaction check: the profile trigger opens the integrated menu; pooled usage,
   connected subscriptions, and the add-subscription action are visible. Adding
-  opens the trusted verification page directly without an intermediate menu row.
-  The detached browser manager is absent.
+  opens the trusted OAuth page in the system default browser without an
+  intermediate menu row. The detached browser manager is absent.
 - Runtime check: the automated desktop check reports zero renderer console errors.
 - Fixes applied during QA: mapped the reviewed Windows renderer symbols, extended
   only the copied renderer CSP for the loopback API, preserved native unpacked

@@ -8,7 +8,7 @@ this project uses [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Subscription emails are visible by default, and Add another subscription
-  opens device sign-in directly without an intermediate menu row.
+  opens ChatGPT OAuth in the system default browser without a device code.
 - Subscription rows are prefetched, and the profile trigger keeps its native
   click-again-to-close behavior.
 

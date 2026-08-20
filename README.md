@@ -31,8 +31,8 @@ binaries or a prebuilt application.
   to the same subscription unless that subscription is depleted.
 - **Automatic failover.** A depleted thread continues through another account
   with quota; if the whole pool is empty, the app shows one combined alert.
-- **Account management.** Both platforms add pooled usage and device-code
-  sign-in to the existing profile menu.
+- **Account management.** Both platforms add pooled usage and browser sign-in
+  to the existing profile menu.
 - **Account-aware settings (macOS).** Profile statistics can be viewed together
   or per subscription, while Plugins can switch Apps and MCP connections.
 - **Per-account resets (macOS).** The native rate-limit sheet shows and consumes
@@ -221,11 +221,11 @@ request Automation access the first time Computer Use controls another app.
 ## Add subscriptions
 
 Open the profile menu at the bottom of the sidebar and select **Add another
-subscription**. Complete the displayed device-code sign-in in your browser and
-wait for the account row to show as connected.
+subscription**. Complete ChatGPT sign-in in your default browser and wait for
+the account row to show as connected.
 
-The verification page opens immediately and the device code is copied to the
-clipboard. If clipboard access fails, the menu shows the code for manual copy.
+The OAuth page opens immediately in the system browser. No device code or Codex
+in-app browser is used for this flow.
 
 The profile menu displays combined weekly usage followed by one row per
 subscription. Email addresses and remaining quota are visible by default. The

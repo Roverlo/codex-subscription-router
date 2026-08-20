@@ -37,27 +37,14 @@ if (typeof fetch === "function") {
 }
 
 async function codexMuxOpenLogin(login) {
-  const userCode = login?.userCode || "";
-  const verificationUrl = login?.verificationUrl || login?.authUrl || "";
-  const destination = new URL(verificationUrl);
+  const destination = new URL(login?.authUrl || "");
   const trustedHost =
     destination.hostname === "chatgpt.com" ||
     destination.hostname === "auth.openai.com";
   if (destination.protocol !== "https:" || !trustedHost) {
-    throw new Error("The sign-in verification URL is not trusted.");
+    throw new Error("The sign-in URL is not trusted.");
   }
-  const copy =
-    userCode && navigator.clipboard
-      ? navigator.clipboard.writeText(userCode)
-      : null;
   window.open(destination.href, "_blank", "noopener,noreferrer");
-  if (!copy) return userCode;
-  try {
-    await copy;
-    return "";
-  } catch {
-    return userCode;
-  }
 }
 
 const CODEX_MUX_ACCOUNT_SCOPED_PLUGIN_METHODS = new Set([
@@ -339,13 +326,10 @@ function CodexMuxAccountMenu() {
         ).account;
       const result = await codexMuxRequest(`/accounts/${account.id}/login`, {
         method: "POST",
-        body: JSON.stringify({ mode: "chatgptDeviceCode" }),
+        body: JSON.stringify({ mode: "chatgpt" }),
       });
-      const manualCode = await codexMuxOpenLogin(result.login);
+      await codexMuxOpenLogin(result.login);
       await refresh();
-      if (manualCode) {
-        setError(`Sign-in opened. Copy this code manually: ${manualCode}`);
-      }
     } catch (requestError) {
       setError(requestError.message);
     } finally {
