@@ -193,6 +193,7 @@ try {
     socket.close();
     process.exit(0);
   }
+  const openedAt = Date.now();
   await call("Input.dispatchMouseEvent", {
     type: "mousePressed",
     button: "left",
@@ -207,16 +208,21 @@ try {
     x: trigger.x,
     y: trigger.y,
   });
-  for (let attempt = 0; attempt < 20; attempt++) {
+  let menuLoaded = false;
+  for (let attempt = 0; attempt < 100; attempt++) {
     if (
       await evaluate(`([...document.querySelectorAll("*")]).some((element) =>
         element.innerText?.trim() === "Add another subscription" &&
         element.getBoundingClientRect().right < innerWidth * 0.25 &&
         element.getBoundingClientRect().width > 0 &&
         element.getBoundingClientRect().height > 0)`)
-    ) break;
-    await pause(500);
+    ) {
+      menuLoaded = true;
+      break;
+    }
+    await pause(100);
   }
+  const menuLoadMilliseconds = menuLoaded ? Date.now() - openedAt : null;
 
   const result = await evaluate(`(() => {
     const collectText = (root) => {
@@ -262,6 +268,18 @@ try {
     fromSurface: true,
   });
   await writeFile(screenshotPath, Buffer.from(screenshot.data, "base64"));
+  await call("Input.dispatchMouseEvent", {
+    type: "mousePressed", button: "left", clickCount: 1, x: trigger.x, y: trigger.y,
+  });
+  await call("Input.dispatchMouseEvent", {
+    type: "mouseReleased", button: "left", clickCount: 1, x: trigger.x, y: trigger.y,
+  });
+  await pause(300);
+  const closesOnSecondClick = await evaluate(`!([...document.querySelectorAll("*")]).some((element) =>
+    element.innerText?.trim() === "Add another subscription" &&
+    element.getBoundingClientRect().right < innerWidth * 0.25 &&
+    element.getBoundingClientRect().width > 0 &&
+    element.getBoundingClientRect().height > 0)`);
 
   const passed =
     result.menuScopeFound &&
@@ -270,8 +288,16 @@ try {
     result.accountIdentifierVisible &&
     result.continueSignInAbsent &&
     result.browserManagerAbsent &&
+    menuLoadMilliseconds <= 1_000 &&
+    closesOnSecondClick &&
     errors.length === 0;
-  console.log(JSON.stringify({ ...result, consoleErrors: errors.length, passed }));
+  console.log(JSON.stringify({
+    ...result,
+    menuLoadMilliseconds,
+    closesOnSecondClick,
+    consoleErrors: errors.length,
+    passed,
+  }));
   if (!passed) process.exitCode = 1;
 } finally {
   socket.close();

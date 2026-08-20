@@ -864,22 +864,6 @@ def patch_renderer(extracted: Path, token: str) -> None:
         1,
     )
 
-    open_change_anchors = (
-        "triggerButton:Ke,onOpenChange:o,children:(0,e7.jsx)(bXc",
-        "return(0,e7.jsx)(vH,{open:a,onOpenChange:o,contentWidth:`panel`",
-    )
-    for anchor in open_change_anchors:
-        if bundle.count(anchor) != 1:
-            raise RuntimeError("could not find a native profile menu open-state hook")
-        bundle = bundle.replace(
-            anchor,
-            anchor.replace(
-                "onOpenChange:o",
-                "onOpenChange:CodexMuxProfileMenuOpenChange(o)",
-            ),
-            1,
-        )
-
     depleted_alert_anchors = (
         "defaultMessage:`You’re out of Codex and Work usage`",
         "defaultMessage:`You’ve used all Codex and Work usage`",

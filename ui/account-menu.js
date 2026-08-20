@@ -1,9 +1,7 @@
 const CODEX_MUX_API = "http://127.0.0.1:__CODEX_MUX_CONTROL_PORT__/v1";
 const CODEX_MUX_TOKEN = "__CODEX_MUX_CONTROL_TOKEN__";
-
-function CodexMuxProfileMenuOpenChange(setOpen) {
-  return setOpen;
-}
+let codexMuxAccountsCache = [];
+let codexMuxAccountsRequest = null;
 
 async function codexMuxRequest(path, options = {}) {
   const response = await fetch(`${CODEX_MUX_API}${path}`, {
@@ -17,6 +15,25 @@ async function codexMuxRequest(path, options = {}) {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
   return body;
+}
+
+function codexMuxLoadAccounts() {
+  if (codexMuxAccountsRequest) return codexMuxAccountsRequest;
+  codexMuxAccountsRequest = codexMuxRequest("/accounts")
+    .then((result) => {
+      codexMuxAccountsCache = result.accounts || [];
+      return codexMuxAccountsCache;
+    })
+    .finally(() => {
+      codexMuxAccountsRequest = null;
+    });
+  return codexMuxAccountsRequest;
+}
+
+if (typeof fetch === "function") {
+  codexMuxLoadAccounts().catch(() => {
+    setTimeout(() => codexMuxLoadAccounts().catch(() => {}), 1_000);
+  });
 }
 
 async function codexMuxOpenLogin(login) {
@@ -248,21 +265,20 @@ function CodexMuxResetAccountSelector({
 
 function CodexMuxAccountMenu() {
   const modalScope = Lo(Q);
-  const [accounts, setAccounts] = kXc.useState([]);
-  const [loading, setLoading] = kXc.useState(true);
+  const [accounts, setAccounts] = kXc.useState(codexMuxAccountsCache);
+  const [loading, setLoading] = kXc.useState(accounts.length === 0);
   const [busy, setBusy] = kXc.useState(false);
   const [error, setError] = kXc.useState("");
 
   const refresh = kXc.useCallback(async () => {
     try {
-      const result = await codexMuxRequest("/accounts");
-      const nextAccounts = result.accounts || [];
+      const nextAccounts = await codexMuxLoadAccounts();
       globalThis.__codexMuxConnectedAccounts = nextAccounts.filter(
         (account) => account.connected && account.enabled,
       );
       setAccounts(nextAccounts);
       setError("");
-      if (nextAccounts.some((account) => account.connected)) setLoading(false);
+      setLoading(false);
     } catch (requestError) {
       setError(requestError.message);
       setLoading(false);

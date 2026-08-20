@@ -9,6 +9,8 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 - Subscription emails are visible by default, and Add another subscription
   opens device sign-in directly without an intermediate menu row.
+- Subscription rows are prefetched, and the profile trigger keeps its native
+  click-again-to-close behavior.
 
 ## [0.1.1] - 2026-08-20
 

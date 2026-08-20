@@ -7,15 +7,31 @@ import vm from "node:vm";
 const source = await readFile(new URL("../ui/account-menu.js", import.meta.url), "utf8");
 assert(!source.includes("Continue sign-in"));
 assert(!source.includes("CodexMuxMaskedEmail"));
+assert(!source.includes("CodexMuxProfileMenuOpenChange"));
 
 const opened = [];
 const copied = [];
+let accountRequests = 0;
 const context = {
   URL,
+  fetch: async () => {
+    accountRequests++;
+    return {
+      ok: true,
+      json: async () => ({ accounts: [{ id: "primary", connected: true }] }),
+    };
+  },
   navigator: { clipboard: { writeText: async (value) => copied.push(value) } },
   window: { open: (...args) => opened.push(args) },
 };
-vm.runInNewContext(`${source}\nglobalThis.openLogin = codexMuxOpenLogin;`, context);
+vm.runInNewContext(
+  `${source}\nglobalThis.openLogin = codexMuxOpenLogin; globalThis.loadAccounts = codexMuxLoadAccounts;`,
+  context,
+);
+
+const accounts = await Promise.all([context.loadAccounts(), context.loadAccounts()]);
+assert.equal(accountRequests, 1);
+assert.equal(accounts[0][0].id, "primary");
 
 const login = {
   userCode: "ABCD-EFGH",

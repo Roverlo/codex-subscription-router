@@ -111,20 +111,6 @@ async function patchRenderer(extracted, token) {
     "usageItems:(0,d7.jsx)(CodexMuxAccountMenu,{})",
     "native Windows usage menu slot",
   );
-  for (const anchor of [
-    "triggerButton:Dt,onOpenChange:l,children:P",
-    "open:s,onOpenChange:l,contentWidth:`panel`",
-  ]) {
-    bundle = replaceOnce(
-      bundle,
-      anchor,
-      anchor.replace(
-        "onOpenChange:l",
-        "onOpenChange:CodexMuxProfileMenuOpenChange(l)",
-      ),
-      "native Windows profile menu open-state hook",
-    );
-  }
   await writeFile(bundlePath, bundle, "utf8");
 }
 

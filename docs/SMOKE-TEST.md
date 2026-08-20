@@ -54,9 +54,11 @@ the release draft before publishing it.
   signed `codex.exe`; do not stop or modify the WindowsApps installation.
 - Confirm port 48123 listens only on `127.0.0.1`, `/v1/health` succeeds, private
   requests without the token return 401, and `/` returns 404.
-- Open the profile menu, verify pooled usage and subscription rows, and complete
-  **Add another subscription** through the directly opened device-code sign-in;
-  confirm no intermediate **Continue sign-in** row appears.
+- Open the profile menu, verify prefetched pooled usage and subscription rows
+  appear without a multi-second blank state, then click the profile trigger
+  again and confirm the menu closes. Complete **Add another subscription**
+  through the directly opened device-code sign-in; confirm no intermediate
+  **Continue sign-in** row appears.
 - With a disposable renderer-debug launch, run `scripts/check_windows_ui.mjs`
   and retain its screenshot plus the zero-console-error result.
 - Confirm there is no **Manage Codex Subscriptions** shortcut or browser manager
