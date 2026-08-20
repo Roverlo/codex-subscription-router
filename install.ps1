@@ -57,6 +57,7 @@ function Get-OfficialApp {
     return [pscustomobject]@{
         Package = $package
         AppRoot = $appRoot
+        Asar = $asar
         AsarHash = $asarHash
         CodexHash = $codexHash
     }
@@ -70,6 +71,25 @@ function Assert-GoVersion {
     }
     if ([int]$Matches.major -lt 1 -or ([int]$Matches.major -eq 1 -and [int]$Matches.minor -lt 26)) {
         throw "Go 1.26 or newer is required; found $version."
+    }
+    return $version
+}
+
+function Assert-NodeDependencies {
+    Assert-Command 'node.exe'
+    $version = (& node.exe -p 'process.versions.node').Trim()
+    if ($LASTEXITCODE -ne 0 -or [version]$version -lt [version]'22.12.0') {
+        throw "Node.js 22.12 or newer is required; found $version."
+    }
+    $projectPackage = Get-Content -LiteralPath (Join-Path $ProjectRoot 'package.json') -Raw | ConvertFrom-Json
+    $expected = $projectPackage.devDependencies.'@electron/asar'
+    $installedManifest = Join-Path $ProjectRoot 'node_modules\@electron\asar\package.json'
+    if (-not (Test-Path -LiteralPath $installedManifest -PathType Leaf)) {
+        throw 'Missing locked build dependency. Run npm ci --ignore-scripts, then retry.'
+    }
+    $actual = (Get-Content -LiteralPath $installedManifest -Raw | ConvertFrom-Json).version
+    if ($actual -ne $expected) {
+        throw "Installed @electron/asar is $actual; expected $expected. Run npm ci --ignore-scripts."
     }
     return $version
 }
@@ -91,6 +111,27 @@ function Set-PrivateStateAcl([string]$Path) {
             throw "Could not repair inherited access below $Path"
         }
     }
+}
+
+function Get-OrCreateControlToken([string]$Root) {
+    $path = Join-Path $Root 'control-token'
+    if (Test-Path -LiteralPath $path -PathType Leaf) {
+        $token = (Get-Content -LiteralPath $path -Raw).Trim()
+        if ($token -notmatch '^[0-9a-fA-F]{64}$') {
+            throw 'The existing control token is invalid; refusing to replace it automatically.'
+        }
+        return $token
+    }
+    $bytes = New-Object byte[] 32
+    $generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $generator.GetBytes($bytes)
+    } finally {
+        $generator.Dispose()
+    }
+    $token = -join ($bytes | ForEach-Object { $_.ToString('x2') })
+    Set-Content -LiteralPath $path -Value $token -Encoding Ascii -NoNewline
+    return $token
 }
 
 function Stop-InstalledProcesses([string]$Root) {
@@ -143,7 +184,7 @@ function New-Shortcut([string]$Path, [string]$Script, [string]$Icon) {
 if ($env:OS -ne 'Windows_NT') {
     throw 'This installer supports Windows only. Use install.sh on macOS.'
 }
-foreach ($file in @('go.mod', 'windows\Start-CodexSubscriptionRouter.ps1', 'windows\Manage-CodexSubscriptions.ps1')) {
+foreach ($file in @('go.mod', 'ui\account-menu.js', 'scripts\patch_windows_asar.mjs', 'windows\Start-CodexSubscriptionRouter.ps1')) {
     if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot $file) -PathType Leaf)) {
         throw "Run install.ps1 from a complete Codex Subscription Router source checkout; missing $file"
     }
@@ -153,9 +194,13 @@ Assert-Command 'icacls.exe'
 
 Write-Step 'Checking prerequisites and the official Windows build'
 $goVersion = Assert-GoVersion
+$nodeVersion = Assert-NodeDependencies
 $official = Get-OfficialApp
 Write-Host "Official package: $($official.Package.PackageFullName)"
 Write-Host "Go toolchain: $goVersion"
+Write-Host "Node.js: $nodeVersion"
+& node.exe (Join-Path $ProjectRoot 'scripts\patch_windows_asar.mjs') --asar $official.Asar --check
+if ($LASTEXITCODE -ne 0) { throw 'Windows profile-menu compatibility check failed.' }
 if ($CheckOnly) {
     Write-Host "Compatibility check passed. Destination: $Destination"
     return
@@ -174,21 +219,33 @@ try {
         Pop-Location
     }
 
-    Write-Step 'Copying the verified official app without modifying it'
+    Write-Step 'Copying the verified official app'
     Copy-OfficialApp $official.AppRoot (Join-Path $stage 'app')
     Copy-Item -LiteralPath (Join-Path $ProjectRoot 'windows\Start-CodexSubscriptionRouter.ps1') -Destination $stage
-    Copy-Item -LiteralPath (Join-Path $ProjectRoot 'windows\Manage-CodexSubscriptions.ps1') -Destination $stage
+
+    Write-Step 'Integrating subscriptions into the copied profile menu'
+    Set-PrivateStateAcl $StateRoot
+    $controlToken = Get-OrCreateControlToken $StateRoot
+    $savedPatchToken = [Environment]::GetEnvironmentVariable('CODEX_MUX_PATCH_TOKEN', 'Process')
+    try {
+        [Environment]::SetEnvironmentVariable('CODEX_MUX_PATCH_TOKEN', $controlToken, 'Process')
+        & node.exe (Join-Path $ProjectRoot 'scripts\patch_windows_asar.mjs') --asar (Join-Path $stage 'app\resources\app.asar')
+        if ($LASTEXITCODE -ne 0) { throw 'Windows renderer patch failed.' }
+    } finally {
+        [Environment]::SetEnvironmentVariable('CODEX_MUX_PATCH_TOKEN', $savedPatchToken, 'Process')
+    }
+    $patchedAsarHash = (Get-FileHash -LiteralPath (Join-Path $stage 'app\resources\app.asar') -Algorithm SHA256).Hash
     [ordered]@{
         routerVersion = (Get-Content -LiteralPath (Join-Path $ProjectRoot 'VERSION') -Raw).Trim()
         installedAt = (Get-Date).ToUniversalTime().ToString('o')
         officialPackage = $official.Package.PackageFullName
-        appAsarSha256 = $official.AsarHash
+        officialAppAsarSha256 = $official.AsarHash
+        patchedAppAsarSha256 = $patchedAsarHash
         codexSha256 = $official.CodexHash
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'windows-build.json') -Encoding UTF8
 
     Write-Step 'Activating the independent installation'
     Stop-InstalledProcesses $Destination
-    Set-PrivateStateAcl $StateRoot
     $backup = $null
     if (Test-Path -LiteralPath $Destination) {
         $backupRoot = Join-Path $StateRoot 'backups'
@@ -209,11 +266,13 @@ try {
 
     Write-Step 'Creating shortcuts'
     $startScript = Join-Path $Destination 'Start-CodexSubscriptionRouter.ps1'
-    $manageScript = Join-Path $Destination 'Manage-CodexSubscriptions.ps1'
     $icon = Join-Path $Destination 'app\ChatGPT.exe'
     $startMenu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Codex Subscription Router'
     New-Shortcut (Join-Path $startMenu 'Codex Subscription Router.lnk') $startScript $icon
-    New-Shortcut (Join-Path $startMenu 'Manage Codex Subscriptions.lnk') $manageScript $icon
+    $staleManagerShortcut = Join-Path $startMenu 'Manage Codex Subscriptions.lnk'
+    if (Test-Path -LiteralPath $staleManagerShortcut) {
+        Remove-Item -LiteralPath $staleManagerShortcut -Force
+    }
     New-Shortcut (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Codex Subscription Router.lnk') $startScript $icon
 
     if (-not $NoLaunch) {

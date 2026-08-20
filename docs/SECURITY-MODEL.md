@@ -5,7 +5,7 @@
 - The official ChatGPT app is trusted build input and remains unchanged.
 - The patcher has local filesystem and code-signing access by design.
 - Each real Codex child is trusted with only its assigned account home.
-- The injected macOS renderer or local Windows manager is trusted with the
+- The injected renderer in the independent desktop copy is trusted with the
   loopback control token.
 - Other local users and remote origins are outside the control API boundary.
 - Processes running as the same OS user are not considered isolated from one
@@ -33,11 +33,10 @@ shared plugin configuration.
 ## Network
 
 The control server binds to `127.0.0.1`. Private endpoints require the token
-embedded into the independently built macOS renderer or read from the
-owner-only state directory by the Windows manager. The manager passes the token
-in a URL fragment, stores it in tab-scoped session storage, and immediately
-removes the fragment from browser history. Profile images must use HTTPS.
-Response sizes and JSON request bodies are bounded.
+embedded into the independently built desktop renderer. The token is generated
+in the owner-only state directory and is never printed by the installer.
+Profile images must use HTTPS. Response sizes and JSON request bodies are
+bounded.
 
 The project itself does not provide a telemetry or update endpoint. Network
 traffic beyond loopback is performed by the official Codex children or by the
@@ -54,10 +53,11 @@ The native helper's caller allowlist is patched to the selected team and the
 independent desktop bundle ID. This is required for the helper's peer checks;
 it does not bypass macOS Accessibility or Screen Recording consent.
 
-On Windows, the Microsoft Store app is copied without modifying official files.
-The installer verifies OpenAI Authenticode signatures before copying and keeps
-the locally compiled mux beside the copied app. Launch-only environment
-overrides connect the two; no persistent environment variable is created.
+On Windows, the Microsoft Store package remains immutable. The installer
+verifies OpenAI Authenticode signatures before copying, patches only the copied
+ASAR for account UI, and keeps the locally compiled mux beside the copied app.
+Launch-only environment overrides provide core routing; no persistent
+environment variable is created.
 
 ## Diagnostics
 

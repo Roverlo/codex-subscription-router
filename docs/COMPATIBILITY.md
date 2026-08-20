@@ -3,6 +3,13 @@
 The installers are intentionally tied to known Codex desktop bundle structures.
 They stop instead of patching or copying an unreviewed official build.
 
+## Release 0.1.1
+
+Windows adds a version-locked renderer patch for the integrated subscription
+menu. The source Store package, official ASAR hash, Codex hash, Authenticode
+signatures, native unpacked modules, and exact renderer anchors must all match
+before activation. macOS retains the reviewed 0.1.0 source build below.
+
 ## Release 0.1.0
 
 | Component | Tested value |
@@ -31,7 +38,7 @@ complete. Review the upstream change and update the patch deliberately.
 | Architecture | Windows x64 |
 
 `install.ps1` also requires valid OpenAI Authenticode signatures on the desktop
-and Codex executables. It copies the reviewed Store app without changing its
-ASAR or signed binaries and uses the official `CODEX_CLI_PATH` and
-`CODEX_ELECTRON_USER_DATA_PATH` overrides at launch. There is no diagnostic
-override for an unknown Windows build; review and record it first.
+and Codex executables. It patches only the independent copy's ASAR for the
+profile-menu UI and uses the official `CODEX_CLI_PATH` and
+`CODEX_ELECTRON_USER_DATA_PATH` overrides for core routing. There is no
+diagnostic override for an unknown Windows build; review and record it first.

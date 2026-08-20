@@ -9,9 +9,9 @@ accounts, and sticky thread ownership continue to work.
 
 On macOS, Codex Subscription Router replaces the copied app's bundled `codex`
 executable with a small Go multiplexer and keeps the original binary beside it
-as `codex.real`. On Windows, the copied official app remains byte-for-byte
-unchanged: `CODEX_CLI_PATH` selects the separately built mux and
-`CODEX_MUX_REAL_CODEX` points back to the copied official `codex.exe`.
+as `codex.real`. On Windows, `CODEX_CLI_PATH` selects the separately built mux
+and `CODEX_MUX_REAL_CODEX` points back to the copied official `codex.exe`. Core
+routing does not depend on the renderer patch.
 
 ## Request routing
 
@@ -51,9 +51,9 @@ the official app's privacy grants and app-group container.
 
 The Windows installer verifies the Store package, hashes, and OpenAI signatures
 before copying the official app. It uses supported process-level CLI and user
-data overrides, preserves the signed Computer Use runtime, and exposes account
-management from the mux itself. The Store installation and persistent user
-environment remain unchanged.
+data overrides, preserves the signed Computer Use runtime, and patches only the
+independent copy's profile menu to expose account management. The Store
+installation and persistent user environment remain unchanged.
 
 ## Plugin behavior
 
@@ -64,9 +64,9 @@ before forwarding the strict RPC request to the chosen child.
 
 ## Control API
 
-The macOS renderer and Windows manager talk to a loopback-only HTTP service on
-port 48123. All private routes require a random 256-bit token. Cross-origin
-access is limited to the copied app's `app://-` origin; the manager is served
-from the loopback origin itself. The service exposes account metadata,
-aggregated usage and profile data, thread ownership, login/logout actions, and
-an authenticated SSE event stream; it never returns OAuth tokens.
+The injected desktop renderer talks to a loopback-only HTTP service on port
+48123. All private routes require a random 256-bit token. Cross-origin access is
+limited to the copied app's `app://-` origin. The service exposes account
+metadata, aggregated usage and profile data, thread ownership, login/logout
+actions, and an authenticated SSE event stream; it never returns OAuth tokens
+or serves a browser manager.

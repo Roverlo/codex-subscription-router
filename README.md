@@ -9,8 +9,8 @@ Codex Subscription Router creates an independent local copy of the official
 Codex desktop app, balances new chats across connected subscriptions, and keeps
 every thread on one subscription so follow-up turns retain conversation context
 and benefit from account-level caching. The macOS build is patched locally;
-Windows uses the desktop app's supported CLI override without modifying its
-ASAR or signed binaries.
+Windows uses the desktop app's supported CLI override for routing and patches
+only the independent copy's profile menu for subscription controls.
 
 The official ChatGPT installation is used only as build input and is never
 modified. This repository contains source code and build tooling—not OpenAI
@@ -31,8 +31,8 @@ binaries or a prebuilt application.
   to the same subscription unless that subscription is depleted.
 - **Automatic failover.** A depleted thread continues through another account
   with quota; if the whole pool is empty, the app shows one combined alert.
-- **Account management.** macOS uses the existing profile menu; Windows opens a
-  token-protected local manager for pooled usage and device-code sign-in.
+- **Account management.** Both platforms add pooled usage and device-code
+  sign-in to the existing profile menu.
 - **Account-aware settings (macOS).** Profile statistics can be viewed together
   or per subscription, while Plugins can switch Apps and MCP connections.
 - **Per-account resets (macOS).** The native rate-limit sheet shows and consumes
@@ -79,7 +79,7 @@ Codex Subscription Router currently targets these reviewed builds:
 | Windows Store package | `OpenAI.Codex` `26.814.5517.0` |
 | Windows desktop version / build | `26.814.41957` / `6744` |
 | Go | 1.26 or newer |
-| Node.js | 22.12 or newer (macOS patch build only) |
+| Node.js | 22.12 or newer |
 
 Both installers fail closed on an unknown official build. The macOS patcher
 verifies renderer anchors and native constants; the Windows installer verifies
@@ -93,7 +93,7 @@ For Windows:
 
 - Windows 10 or 11 x64
 - The official Codex app installed from Microsoft Store
-- Go 1.26+
+- Go 1.26+, Node.js 22.12+, and npm
 
 For macOS:
 
@@ -113,15 +113,17 @@ Run from PowerShell:
 ```powershell
 git clone https://github.com/b-nnett/codex-subscription-router.git
 Set-Location codex-subscription-router
+npm ci --ignore-scripts
 .\install.ps1
 ```
 
 The installer keeps the Microsoft Store installation unchanged. It validates
 the exact official build, compiles the mux, creates an independent copy under
-`%LOCALAPPDATA%\Programs\Codex Subscription Router`, applies an isolated desktop
-profile, creates Start menu and desktop shortcuts, and launches it. Existing
-router state is retained and an installed app is moved to a timestamped backup
-before replacement.
+`%LOCALAPPDATA%\Programs\Codex Subscription Router`, integrates subscriptions
+into that copy's profile menu, applies an isolated desktop profile, creates
+Start menu and desktop shortcuts, and launches it. Existing router state is
+retained and an installed app is moved to a timestamped backup before
+replacement.
 
 No system or user environment variables are written. The launcher passes its
 CLI and profile overrides only to the independent process.
@@ -218,17 +220,15 @@ request Automation access the first time Computer Use controls another app.
 
 ## Add subscriptions
 
-On Windows, open **Manage Codex Subscriptions** from the Start menu, then select
-**Add subscription**. On macOS, open the profile menu at the bottom of the
-sidebar and select **Add another subscription**. Complete the displayed
-device-code sign-in in your browser and wait for the account row to show as
-connected.
+Open the profile menu at the bottom of the sidebar and select **Add another
+subscription**. Complete the displayed device-code sign-in in your browser and
+wait for the account row to show as connected.
 
-On macOS, clicking away while the code is visible does not dismiss the menu.
+Clicking away while the code is visible does not dismiss the menu.
 Clicking the code copies it and opens the verification page. The Windows
-manager copies the code when browser clipboard access is available.
+build uses the same flow inside the desktop menu.
 
-The macOS profile menu displays combined weekly usage followed by one row per
+The profile menu displays combined weekly usage followed by one row per
 subscription. Email addresses remain masked until hovered. The final row always
 starts another sign-in.
 
@@ -259,10 +259,8 @@ login are scoped to the selected subscription.
 the sheet. Selecting a subscription changes the displayed balance and ensures
 the reset is consumed only for that account.
 
-Windows keeps the official renderer intact. Its local manager covers account
-creation, device-code sign-in, pooled usage, and enable/disable state; the
-macOS-only profile, Plugins, reset, and pinned-thread renderer enhancements are
-not injected on Windows.
+Windows injects only the integrated subscription menu. The combined Profile,
+Plugins, reset, and pinned-thread enhancements remain macOS-only.
 
 ![Account-scoped plugin connections](screenshots/plugin-account-picker-secondary-final.png)
 
@@ -276,6 +274,9 @@ reviewed and recorded:
 .\install.ps1 -CheckOnly
 .\install.ps1
 ```
+
+The already installed independent copy is not overwritten by a Store update,
+so it continues to launch while a new official build is being reviewed.
 
 On macOS, the copied app's updater is disabled so an official update cannot
 overwrite the patch. Update `/Applications/ChatGPT.app`, verify that the new
@@ -335,8 +336,8 @@ The Windows installer can be checked independently with:
 go test ./...
 ```
 
-The Go backend, Windows manager, and injected macOS renderer have no runtime
-third-party dependencies. `@electron/asar` is build-only. Deterministic UI
+The Go backend and injected desktop renderer have no runtime third-party
+dependencies. `@electron/asar` is build-only. Deterministic UI
 preview routes are enabled only when `CODEX_MUX_UI_TESTS=1` is present at launch
 and remain token-authenticated.
 
@@ -347,8 +348,8 @@ The latest completed macOS run is recorded in
 ## Known limitations
 
 - Upstream ChatGPT updates can require new, reviewed patch anchors.
-- Windows uses a separate management page; native renderer enhancements remain
-  macOS-only.
+- Combined Profile, Plugins, reset, and pinned-thread renderer enhancements are
+  currently macOS-only.
 - The initial merged history fetch is limited to 500 threads per account.
 - Combined “skills explored” totals can count the same skill once per account
   because the upstream profile response exposes counts rather than skill IDs.

@@ -1,7 +1,7 @@
 {
   "name": "codex-subscription-router-patcher",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Build tooling for the independent Codex Subscription Router desktop app",
   "license": "MIT",
   "repository": {
@@ -18,7 +18,7 @@
   "scripts": {
     "check": "npm run check:go && npm run check:js && npm run check:python && npm run check:shell",
     "check:go": "go test ./... && go vet ./...",
-    "check:js": "node --check ui/account-menu.js && node --check ui/thread-subscription.js && node --check ui/ui-test-bridge.cjs",
+    "check:js": "node --check ui/account-menu.js && node --check ui/thread-subscription.js && node --check ui/ui-test-bridge.cjs && node --check scripts/patch_windows_asar.mjs && node --check scripts/check_windows_ui.mjs",
     "check:python": "python3 -m py_compile scripts/patch_app.py scripts/check_release.py",
     "check:shell": "bash -n install.sh",
     "release:check": "python3 scripts/check_release.py"

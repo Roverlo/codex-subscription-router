@@ -45,3 +45,18 @@ signature and reuse the same Apple team as the previous installed build.
 
 Record the tested commit, macOS version, signing team ID, and any deviations in
 the release draft before publishing it.
+
+## Windows x64
+
+- Confirm `install.ps1 -CheckOnly` validates the exact Store package, source
+  ASAR, Codex hash, OpenAI signatures, native unpacked modules, and menu anchors.
+- Confirm the copied desktop launches `codex-mux.exe`, which launches the copied
+  signed `codex.exe`; do not stop or modify the WindowsApps installation.
+- Confirm port 48123 listens only on `127.0.0.1`, `/v1/health` succeeds, private
+  requests without the token return 401, and `/` returns 404.
+- Open the profile menu, verify pooled usage and subscription rows, and complete
+  **Add another subscription** through device-code sign-in.
+- With a disposable renderer-debug launch, run `scripts/check_windows_ui.mjs`
+  and retain its screenshot plus the zero-console-error result.
+- Confirm there is no **Manage Codex Subscriptions** shortcut or browser manager
+  and that the desktop console has no errors.
