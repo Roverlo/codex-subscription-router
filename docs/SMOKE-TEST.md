@@ -15,7 +15,7 @@ signature and reuse the same Apple team as the previous installed build.
 
 ## Accounts and routing
 
-- Connect at least two subscriptions and confirm photos, plans, masked emails,
+- Connect at least two subscriptions and confirm photos, plans, visible emails,
   pooled usage, and loading states.
 - Start chats until each account has received one; confirm every follow-up stays
   on its original account.
@@ -55,7 +55,8 @@ the release draft before publishing it.
 - Confirm port 48123 listens only on `127.0.0.1`, `/v1/health` succeeds, private
   requests without the token return 401, and `/` returns 404.
 - Open the profile menu, verify pooled usage and subscription rows, and complete
-  **Add another subscription** through device-code sign-in.
+  **Add another subscription** through the directly opened device-code sign-in;
+  confirm no intermediate **Continue sign-in** row appears.
 - With a disposable renderer-debug launch, run `scripts/check_windows_ui.mjs`
   and retain its screenshot plus the zero-console-error result.
 - Confirm there is no **Manage Codex Subscriptions** shortcut or browser manager

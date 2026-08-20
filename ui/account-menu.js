@@ -1,12 +1,8 @@
 const CODEX_MUX_API = "http://127.0.0.1:__CODEX_MUX_CONTROL_PORT__/v1";
 const CODEX_MUX_TOKEN = "__CODEX_MUX_CONTROL_TOKEN__";
-let codexMuxLoginActive = false;
 
 function CodexMuxProfileMenuOpenChange(setOpen) {
-  return (nextOpen) => {
-    if (!nextOpen && codexMuxLoginActive) return;
-    setOpen(nextOpen);
-  };
+  return setOpen;
 }
 
 async function codexMuxRequest(path, options = {}) {
@@ -21,6 +17,30 @@ async function codexMuxRequest(path, options = {}) {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
   return body;
+}
+
+async function codexMuxOpenLogin(login) {
+  const userCode = login?.userCode || "";
+  const verificationUrl = login?.verificationUrl || login?.authUrl || "";
+  const destination = new URL(verificationUrl);
+  const trustedHost =
+    destination.hostname === "chatgpt.com" ||
+    destination.hostname === "auth.openai.com";
+  if (destination.protocol !== "https:" || !trustedHost) {
+    throw new Error("The sign-in verification URL is not trusted.");
+  }
+  const copy =
+    userCode && navigator.clipboard
+      ? navigator.clipboard.writeText(userCode)
+      : null;
+  window.open(destination.href, "_blank", "noopener,noreferrer");
+  if (!copy) return userCode;
+  try {
+    await copy;
+    return "";
+  } catch {
+    return userCode;
+  }
 }
 
 const CODEX_MUX_ACCOUNT_SCOPED_PLUGIN_METHODS = new Set([
@@ -232,9 +252,6 @@ function CodexMuxAccountMenu() {
   const [loading, setLoading] = kXc.useState(true);
   const [busy, setBusy] = kXc.useState(false);
   const [error, setError] = kXc.useState("");
-  const [login, setLogin] = kXc.useState(null);
-  const [codeCopied, setCodeCopied] = kXc.useState(false);
-  const loginAccountId = login?.accountId || null;
 
   const refresh = kXc.useCallback(async () => {
     try {
@@ -260,13 +277,6 @@ function CodexMuxAccountMenu() {
     events.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
-        if (
-          payload.type === "account-updated" &&
-          payload.accountId === loginAccountId
-        ) {
-          codexMuxLoginActive = false;
-          setLogin(null);
-        }
         if (payload.type === "account-updated") refresh();
       } catch {}
     };
@@ -281,18 +291,7 @@ function CodexMuxAccountMenu() {
       clearInterval(timer);
       events.close();
     };
-  }, [refresh, loginAccountId]);
-
-  kXc.useEffect(() => {
-    if (!login) return;
-    const allowEscapeDismissal = (event) => {
-      if (event.key !== "Escape") return;
-      codexMuxLoginActive = false;
-      setLogin(null);
-    };
-    window.addEventListener("keydown", allowEscapeDismissal, true);
-    return () => window.removeEventListener("keydown", allowEscapeDismissal, true);
-  }, [login]);
+  }, [refresh]);
 
   const connected = accounts.filter(
     (account) => account.connected && account.enabled,
@@ -314,54 +313,27 @@ function CodexMuxAccountMenu() {
     setBusy(true);
     setError("");
     try {
-      const created = await codexMuxRequest("/accounts", {
-        method: "POST",
-        body: JSON.stringify({ label: `Subscription ${connected.length + 1}` }),
-      });
-      const result = await codexMuxRequest(`/accounts/${created.account.id}/login`, {
+      const account =
+        accounts.find((candidate) => !candidate.connected && candidate.enabled) ||
+        (
+          await codexMuxRequest("/accounts", {
+            method: "POST",
+            body: JSON.stringify({ label: `Subscription ${accounts.length + 1}` }),
+          })
+        ).account;
+      const result = await codexMuxRequest(`/accounts/${account.id}/login`, {
         method: "POST",
         body: JSON.stringify({ mode: "chatgptDeviceCode" }),
       });
-      const pendingLogin = result.login
-        ? { ...result.login, accountId: created.account.id }
-        : null;
-      codexMuxLoginActive = pendingLogin != null;
-      setCodeCopied(false);
-      setLogin(pendingLogin);
+      const manualCode = await codexMuxOpenLogin(result.login);
       await refresh();
+      if (manualCode) {
+        setError(`Sign-in opened. Copy this code manually: ${manualCode}`);
+      }
     } catch (requestError) {
       setError(requestError.message);
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function copyCodeAndContinue(event) {
-    event.preventDefault();
-    const userCode = login?.userCode || "";
-    const verificationUrl = login?.verificationUrl || login?.authUrl || "";
-    const copy = userCode
-      ? navigator.clipboard.writeText(userCode)
-      : Promise.resolve();
-    if (verificationUrl) {
-      try {
-        const destination = new URL(verificationUrl);
-        const trustedHost =
-          destination.hostname === "chatgpt.com" ||
-          destination.hostname === "auth.openai.com";
-        if (destination.protocol !== "https:" || !trustedHost) {
-          throw new Error("untrusted verification URL");
-        }
-        window.open(destination.href, "_blank", "noopener,noreferrer");
-      } catch {
-        setError("The sign-in verification page could not be opened safely.");
-      }
-    }
-    try {
-      await copy;
-      setCodeCopied(userCode !== "");
-    } catch {
-      setError("The sign-in code could not be copied.");
     }
   }
 
@@ -409,10 +381,7 @@ function CodexMuxAccountMenu() {
               imageUrl: account.profileImageUrl,
               label: account.label,
             }),
-          SubText: account.email
-            ? (0, e7.jsx)(CodexMuxMaskedEmail, { email: account.email })
-            : account.planType || "ChatGPT subscription",
-          className: "group",
+          SubText: account.email || account.planType || "ChatGPT subscription",
           rightIcon: (0, e7.jsx)("span", {
             className: "text-token-description-foreground tabular-nums",
             children: remaining == null ? "–" : `${Math.round(remaining)}%`,
@@ -422,25 +391,6 @@ function CodexMuxAccountMenu() {
             : account.label,
         },
         `codex-mux-account-${account.id}`,
-      ),
-    );
-  }
-
-  if (login) {
-    rows.push(
-      (0, e7.jsx)(
-        _H,
-        {
-          LeftIcon: CodexMuxCopyIcon,
-          SubText: login.userCode
-            ? codeCopied
-              ? `Code ${login.userCode} copied`
-              : `Code ${login.userCode} · Click to copy`
-            : "Finish signing in with ChatGPT",
-          onSelect: copyCodeAndContinue,
-          children: "Continue sign-in",
-        },
-        "codex-mux-login",
       ),
     );
   }
@@ -511,49 +461,6 @@ function CodexMuxPlusIcon(props) {
       strokeWidth: 1.5,
       strokeLinecap: "round",
     }),
-  });
-}
-
-function CodexMuxCopyIcon(props) {
-  return (0, e7.jsx)("svg", {
-    viewBox: "0 0 20 20",
-    fill: "none",
-    "aria-hidden": true,
-    ...props,
-    children: (0, e7.jsxs)(e7.Fragment, {
-      children: [
-        (0, e7.jsx)("rect", {
-          x: 6.25,
-          y: 6.25,
-          width: 9.5,
-          height: 9.5,
-          rx: 2,
-          stroke: "currentColor",
-          strokeWidth: 1.5,
-        }),
-        (0, e7.jsx)("path", {
-          d: "M13.75 6.25V6A1.75 1.75 0 0 0 12 4.25H6A1.75 1.75 0 0 0 4.25 6v6c0 .97.78 1.75 1.75 1.75h.25",
-          stroke: "currentColor",
-          strokeWidth: 1.5,
-          strokeLinecap: "round",
-        }),
-      ],
-    }),
-  });
-}
-
-function CodexMuxMaskedEmail({ email }) {
-  return (0, e7.jsxs)(e7.Fragment, {
-    children: [
-      (0, e7.jsx)("span", {
-        className: "group-hover:hidden",
-        children: "••••••••",
-      }),
-      (0, e7.jsx)("span", {
-        className: "hidden group-hover:inline",
-        children: email,
-      }),
-    ],
   });
 }
 

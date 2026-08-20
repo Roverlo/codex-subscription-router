@@ -224,13 +224,12 @@ Open the profile menu at the bottom of the sidebar and select **Add another
 subscription**. Complete the displayed device-code sign-in in your browser and
 wait for the account row to show as connected.
 
-Clicking away while the code is visible does not dismiss the menu.
-Clicking the code copies it and opens the verification page. The Windows
-build uses the same flow inside the desktop menu.
+The verification page opens immediately and the device code is copied to the
+clipboard. If clipboard access fails, the menu shows the code for manual copy.
 
 The profile menu displays combined weekly usage followed by one row per
-subscription. Email addresses remain masked until hovered. The final row always
-starts another sign-in.
+subscription. Email addresses and remaining quota are visible by default. The
+final row always starts another sign-in.
 
 ## Routing behavior
 

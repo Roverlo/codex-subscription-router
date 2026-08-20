@@ -31,6 +31,7 @@ REQUIRED_FILES = (
     "docs/SMOKE-TEST.md",
     "package-lock.json",
     "package.json",
+    "scripts/check_account_menu.mjs",
     "scripts/check_windows_ui.mjs",
     "scripts/patch_windows_asar.mjs",
     "windows/Start-CodexSubscriptionRouter.ps1",

@@ -221,6 +221,8 @@ try {
     return {
       addSubscriptionVisible: text.includes("Add another subscription"),
       connectedSubscriptionsVisible: /connected subscriptions?/.test(text),
+      accountIdentifierVisible: text.includes("@") && !text.includes("••••"),
+      continueSignInAbsent: !text.includes("Continue sign-in"),
       browserManagerAbsent: !text.includes("Manage Codex Subscriptions"),
     };
   })()`);
@@ -233,6 +235,8 @@ try {
   const passed =
     result.addSubscriptionVisible &&
     result.connectedSubscriptionsVisible &&
+    result.accountIdentifierVisible &&
+    result.continueSignInAbsent &&
     result.browserManagerAbsent &&
     errors.length === 0;
   console.log(JSON.stringify({ ...result, consoleErrors: errors.length, passed }));

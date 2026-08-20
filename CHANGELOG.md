@@ -5,6 +5,11 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Subscription emails are visible by default, and Add another subscription
+  opens device sign-in directly without an intermediate menu row.
+
 ## [0.1.1] - 2026-08-20
 
 ### Added
