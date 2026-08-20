@@ -96,6 +96,9 @@ try {
     call("Log.enable"),
   ]);
   await pause(2_000);
+  await call("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape" });
+  await call("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape" });
+  await pause(500);
 
   const trigger = await evaluate(`(() => {
     const allElements = (root = document) => {
@@ -204,11 +207,20 @@ try {
     x: trigger.x,
     y: trigger.y,
   });
-  await pause(1_000);
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if (
+      await evaluate(`([...document.querySelectorAll("*")]).some((element) =>
+        element.innerText?.trim() === "Add another subscription" &&
+        element.getBoundingClientRect().right < innerWidth * 0.25 &&
+        element.getBoundingClientRect().width > 0 &&
+        element.getBoundingClientRect().height > 0)`)
+    ) break;
+    await pause(500);
+  }
 
   const result = await evaluate(`(() => {
     const collectText = (root) => {
-      let text = root.body?.innerText || "";
+      let text = root.body?.innerText || root.innerText || "";
       for (const element of root.querySelectorAll("*")) {
         if (element.shadowRoot) text += "\\n" + collectText(element.shadowRoot);
         if (element.tagName === "IFRAME" && element.contentDocument) {
@@ -217,8 +229,27 @@ try {
       }
       return text;
     };
-    const text = collectText(document);
+    const visible = (element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.visibility !== "hidden" && style.display !== "none" &&
+        rect.width > 0 && rect.height > 0;
+    };
+    const add = [...document.querySelectorAll("*")].find((element) =>
+      visible(element) &&
+      element.innerText?.trim() === "Add another subscription" &&
+      element.getBoundingClientRect().right < innerWidth * 0.25
+    );
+    let menu = add;
+    while (
+      menu &&
+      !(menu.innerText.includes("Usage remaining") && /connected subscriptions?/.test(menu.innerText))
+    ) {
+      menu = menu.parentElement;
+    }
+    const text = menu ? collectText(menu) : "";
     return {
+      menuScopeFound: Boolean(menu),
       addSubscriptionVisible: text.includes("Add another subscription"),
       connectedSubscriptionsVisible: /connected subscriptions?/.test(text),
       accountIdentifierVisible: text.includes("@") && !text.includes("••••"),
@@ -233,6 +264,7 @@ try {
   await writeFile(screenshotPath, Buffer.from(screenshot.data, "base64"));
 
   const passed =
+    result.menuScopeFound &&
     result.addSubscriptionVisible &&
     result.connectedSubscriptionsVisible &&
     result.accountIdentifierVisible &&
